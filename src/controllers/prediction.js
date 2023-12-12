@@ -49,6 +49,12 @@ class PlantDiseaseClassifier {
     ];
   }
 
+  async configureTFBackend() {
+    await tf.ready();
+    // Configurar backend para usar la CPU
+    await tf.setBackend("cpu");
+  }
+
   async loadPlantModel() {
     const modelJson = require("../context/model_ia/model_bueno.json");
     const modelWeights = require("../context/model_ia/archivo_bueno.bin");
@@ -57,6 +63,7 @@ class PlantDiseaseClassifier {
 
     try {
       await tf.ready();
+      await this.configureTFBackend();
       this.plantModel = await tf.loadGraphModel(
         bundleResourceIO(modelJson, modelWeights)
       );
@@ -78,6 +85,7 @@ class PlantDiseaseClassifier {
       }
 
       await tf.ready();
+      await this.configureTFBackend();
       this.modelEnfermedad = await tf.loadGraphModel(
         bundleResourceIO(diseaseModelJson, diseaseModelWeights)
       );
@@ -129,8 +137,8 @@ class PlantDiseaseClassifier {
         [128, 128]
       );
       const expandedTensor = tf.expandDims(processedTensor, 0);
-      console.log(expandedTensor);
       const prediction = await this.plantModel.predict(expandedTensor);
+
       const resultArray = await prediction.array();
 
       const predictedClassIndex = tf.argMax(resultArray[0]).dataSync()[0];
@@ -143,16 +151,20 @@ class PlantDiseaseClassifier {
         `la clase predicha es ${predictedClass}, con una confianza de ${confidence}`
       );
 
+      tf.dispose([imgTensor, normalizedTensor, processedTensor, prediction]);
+
       // Carga y predicción del modelo de enfermedad correspondiente
 
       await this.loadDiseaseModel(predictedClass);
-      console.log(expandedTensor);
 
+      console.log(
+        `tensor que entra al modelo de enfermedades ${expandedTensor}`
+      );
       // Predicción de la enfermedad
       const diseasePrediction = await this.modelEnfermedad.predict(
         expandedTensor
       );
-      console.log(diseasePrediction);
+      /* console.log("segunda prediccion:", diseasePrediction);
       const diseaseResultArray = await diseasePrediction.array();
       console.log(diseaseResultArray);
 
@@ -162,13 +174,13 @@ class PlantDiseaseClassifier {
         processedTensor,
         expandedTensor,
         prediction,
-      ]);
+      ]); */
 
       /* setTimeout(() => {
         navigation.navigate("Plant");
       }, 3000); */
     } catch (error) {
-      console.error("Error en la prediccion:", error);
+      console.error(`error en la prediccion`, error);
     }
   }
 }
