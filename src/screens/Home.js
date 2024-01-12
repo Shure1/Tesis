@@ -19,9 +19,18 @@ const TensorCamera = cameraWithTensors(Camera);
 const Home = () => {
   const [hasGalleryPermission, sethasGalleryPermission] = useState(null);
   const [hasCameraPermission, sethasCameraPermission] = useState(null);
+  const [topPredictions, setTopPredictions] = useState([]);
 
-  const { prediction, setPrediction, image, setImage, model, classifier } =
-    useContext(PlantContext);
+  const {
+    prediction,
+    setPrediction,
+    image,
+    setImage,
+    model,
+    classifier,
+    predictionEnfermedad,
+    setPredictionEnfermedad,
+  } = useContext(PlantContext);
   const navigation = useNavigation();
 
   useEffect(() => {
@@ -34,6 +43,16 @@ const Home = () => {
     })();
   }, []);
 
+  const Procesar = async () => {
+    await classifier.processImage(
+      image,
+      setPrediction,
+      setPredictionEnfermedad,
+      setTopPredictions,
+      navigation
+    );
+  };
+
   return (
     <View style={globalStyles.screenContainer}>
       <MyButton onPress={() => tomarFoto(setImage)} title="Tomar foto" />
@@ -43,14 +62,22 @@ const Home = () => {
       {prediction !== "" && (
         <Text style={globalStyles.predictionText}>
           La planta es: {prediction}
+          {predictionEnfermedad === "sana"
+            ? ` y la planta esta  ${predictionEnfermedad}`
+            : ""}
         </Text>
       )}
+      {topPredictions.map((pred, index) => (
+        <Text key={index} style={globalStyles.predictionText}>
+          {index + 1}. {pred.className} - {pred.percentage}%
+        </Text>
+      ))}
       {image && (
         <>
           <MyButton
             title="Detectar"
             onPress={() => {
-              classifier.processImage(image, setPrediction);
+              Procesar();
             }}
           />
         </>

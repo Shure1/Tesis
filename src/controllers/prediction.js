@@ -4,6 +4,7 @@ import * as ImageManipulator from "expo-image-manipulator";
 import { decodeJpeg } from "@tensorflow/tfjs-react-native";
 import { ModelsEnfermedades } from "../utils/routesModels";
 import * as FileSystem from "expo-file-system";
+import "@tensorflow/tfjs-backend-webgl";
 
 class PlantDiseaseClassifier {
   constructor() {
@@ -22,29 +23,20 @@ class PlantDiseaseClassifier {
     ];
     this.enfermedades = [
       {
-        Apple: ["scab", "blackrot", "cedar apple rust"],
-        Cherry: ["Powdery Mildew"],
+        Apple: ["scab", "blackrot", "cedar apple rust", "sana"],
+        Cherry: ["sana", "Powdery Mildew"],
         Corn: [
-          "Cercospora Leaf Spot Gray Leaf Spot",
+          "Cercospora Leaf Spot",
           "Common Rust",
+          "sana",
           "Northern Leaf Blight",
         ],
-        Grape: ["Black Rot", "Black Measles", "Isariopsis Leaf Spot"],
-        Peach: ["Bacterial spot"],
-        Pepper: ["Bacterial spot"],
-        Potato: ["Early Blight", "Late Blight"],
-        Strawberry: ["leaf scorch"],
-        Tomato: [
-          "Bacterial spot",
-          "Early blight",
-          "Late blight",
-          "Leaf Mold",
-          "Septoria leaf spot",
-          "Two-spotted spider mite",
-          "Target Spot",
-          "Mosaic virus",
-          "Yellow Leaf Curl Virus",
-        ],
+        Grape: ["Black Rot", "Black Measles", "sana", "Isariopsis Leaf Spot"],
+        Peach: ["Bacterial Spot", "sana"],
+        Pepper: ["Bacterial Spot", "sana"],
+        Potato: ["Early Blight", "sana", "Late Blight"],
+        Strawberry: ["sana", "Leaf Scorch"],
+        Tomato: ["Bacterial Spot", "Early Blight", "sana", "Late Blight"],
       },
     ];
   }
@@ -55,10 +47,22 @@ class PlantDiseaseClassifier {
     await tf.setBackend("cpu");
   }
 
+  async getTopPredictions(resultArray) {
+    const predictions = resultArray[0]
+      .map((score, index) => ({ score, className: this.classNames[index] }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+
+    return predictions.map((pred) => ({
+      className: pred.className,
+      percentage: (pred.score * 100).toFixed(2),
+    }));
+  }
+
   async loadPlantModel() {
     const modelJson = require("../context/model_ia/model_bueno.json");
     const modelWeights = require("../context/model_ia/archivo_bueno.bin");
-    /* const modelJson = require("../context/model_ia/Modelos_Enfermedades/PROBANDO.json");
+    /* const modelJson = require("../context/model_ia/Modelos_Enfermedades/Apple.json");
     const modelWeights = require("../context/model_ia/Modelos_Enfermedades/Apple.bin"); */
 
     try {
@@ -74,8 +78,6 @@ class PlantDiseaseClassifier {
   }
 
   async loadDiseaseModel(predictedClass) {
-    console.log("Predicted Class:", predictedClass);
-
     const diseaseModelJson = ModelsEnfermedades[predictedClass].json;
     const diseaseModelWeights = ModelsEnfermedades[predictedClass].bin;
 
@@ -85,7 +87,7 @@ class PlantDiseaseClassifier {
       }
 
       await tf.ready();
-      await this.configureTFBackend();
+      /* await this.configureTFBackend(); */
       this.modelEnfermedad = await tf.loadGraphModel(
         bundleResourceIO(diseaseModelJson, diseaseModelWeights)
       );
@@ -113,7 +115,13 @@ class PlantDiseaseClassifier {
     return result.uri;
   }
 
-  async processImage(image, setPrediction) {
+  async processImage(
+    image,
+    setPrediction,
+    setPredictionEnfermedad,
+    setTopPredictions,
+    navigation
+  ) {
     try {
       if (!this.plantModel) {
         console.error("Model not loaded desde processImage");
@@ -136,10 +144,15 @@ class PlantDiseaseClassifier {
         normalizedTensor,
         [128, 128]
       );
+
       const expandedTensor = tf.expandDims(processedTensor, 0);
+
       const prediction = await this.plantModel.predict(expandedTensor);
 
       const resultArray = await prediction.array();
+      const top3Predictions = await this.getTopPredictions(resultArray);
+      setTopPredictions(top3Predictions);
+      console.log("array de probabilidades", resultArray);
 
       const predictedClassIndex = tf.argMax(resultArray[0]).dataSync()[0];
       const predictedClass = this.classNames[predictedClassIndex];
@@ -157,16 +170,24 @@ class PlantDiseaseClassifier {
 
       await this.loadDiseaseModel(predictedClass);
 
-      console.log(
-        `tensor que entra al modelo de enfermedades ${expandedTensor}`
-      );
       // Predicción de la enfermedad
       const diseasePrediction = await this.modelEnfermedad.predict(
         expandedTensor
       );
-      /* console.log("segunda prediccion:", diseasePrediction);
       const diseaseResultArray = await diseasePrediction.array();
-      console.log(diseaseResultArray);
+
+      const predicedEnfermedadIndex = tf
+        .argMax(diseaseResultArray[0])
+        .dataSync()[0];
+      const predictedClassEnfermedad =
+        this.enfermedades[0][predictedClass][predicedEnfermedadIndex];
+      setPredictionEnfermedad(predictedClassEnfermedad);
+
+      const confidenceEnfermedad =
+        diseaseResultArray[0][predicedEnfermedadIndex];
+      console.log(
+        `la enfermedad de ${predictedClass} es ${predictedClassEnfermedad} con una confianza de ${confidenceEnfermedad}`
+      );
 
       tf.dispose([
         imgTensor,
@@ -174,11 +195,15 @@ class PlantDiseaseClassifier {
         processedTensor,
         expandedTensor,
         prediction,
-      ]); */
+      ]);
 
-      /* setTimeout(() => {
-        navigation.navigate("Plant");
-      }, 3000); */
+      if (predictedClassEnfermedad == "sana") {
+        return;
+      } else {
+        setTimeout(() => {
+          navigation.navigate("Plant");
+        }, 3000);
+      }
     } catch (error) {
       console.error(`error en la prediccion`, error);
     }

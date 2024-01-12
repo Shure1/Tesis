@@ -23,7 +23,16 @@ export const PlantProvider = ({ children }) => {
 
   return (
     <PlantContext.Provider
-      value={{ image, setImage, prediction, setPrediction, model, classifier }}
+      value={{
+        image,
+        setImage,
+        prediction,
+        setPrediction,
+        model,
+        classifier,
+        predictionEnfermedad,
+        setPredictionEnfermedad,
+      }}
     >
       {children}
     </PlantContext.Provider>

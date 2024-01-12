@@ -6,13 +6,11 @@ import { db } from "../utils/bdd";
 import PlantInfoComponent from "../components/PlantInfoComponent";
 import { plantImageMap } from "../utils/setImage";
 import { useContext } from "react";
+import { fetchAllData } from "../utils/bdd";
 
 const Plant = () => {
-  const { predictionPlant, setPredictionPlant, image, setImage } =
-    useContext(PlantContext);
+  const { prediction, predictionEnfermedad } = useContext(PlantContext);
   const [infoPlant, setInfoPlant] = useState(null);
-
-  const [predictionEnfermedad, setpredictionEnfermedad] = useState("scab");
 
   useEffect(() => {
     try {
@@ -32,7 +30,7 @@ const Plant = () => {
           LEFT JOIN Enfermedades ON Derivados.id_enfermedad = Enfermedades.id
           WHERE Planta.nombre = ? AND Enfermedades.nombre = ?
           GROUP BY Planta.id`,
-          ["Tomato", "Leaf Mold"],
+          [prediction, predictionEnfermedad],
           (_, { rows: { _array } }) => {
             if (_array.length > 0) {
               setInfoPlant(_array[0]);

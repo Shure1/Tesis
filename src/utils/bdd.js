@@ -1,7 +1,7 @@
 import * as SQLite from "expo-sqlite";
 import * as a from "../../assets/plants/apple/manzano.jpeg";
 
-export const db = SQLite.openDatabase("Tesis.db");
+export const db = SQLite.openDatabase("BDD_Tesis.db");
 
 export const initBDD = () => {
   db.transaction((tx) => {
@@ -18,42 +18,13 @@ export const initBDD = () => {
         FOREIGN KEY (id_enfermedad) REFERENCES Enfermedades (id)
       )`,
       [],
-      () => console.log("Tabla Derivados creada con éxito"),
+      () => console.log("BDD iniciada :D"),
       (error) => console.error("Error al crear la tabla Derivados", error)
-    );
-
-    tx.executeSql(
-      `CREATE TABLE IF NOT EXISTS Enfermedades (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre TEXT NOT NULL,
-        descripcion TEXT,
-        sintomas TEXT,
-        causas TEXT
-      )`,
-      [],
-      () => console.log("Tabla Enfermedades creada con éxito"),
-      (error) => console.error("Error al crear la tabla Enfermedades", error)
-    );
-
-    tx.executeSql(
-      `CREATE TABLE IF NOT EXISTS Planta (
-        id INTEGER PRIMARY KEY,
-        nombre TEXT(200) NOT NULL,
-        nombre_cientifico TEXT, 
-        imagen TEXT,
-        descripcion TEXT,
-        recomendaciones TEXT 
-      )`,
-      [],
-      () => {
-        console.log("Tabla Planta creada con éxito");
-      },
-      (error) => console.error("Error al crear la tabla Planta", error)
     );
   });
 };
 
-/* export const resetBDD = () => {
+export const resetBDD = () => {
   db.transaction((tx) => {
     tx.executeSql(
       `DROP TABLE IF EXISTS Derivados`,
@@ -78,4 +49,34 @@ export const initBDD = () => {
 
     console.log("Todas las tablas eliminadas con éxito");
   });
-}; */
+};
+
+export const fetchAllData = () => {
+  db.transaction((tx) => {
+    // Consulta para la tabla Derivados
+    tx.executeSql(
+      `SELECT * FROM Derivados`,
+      [],
+      (_, { rows: { _array } }) => console.log("Datos de Derivados:", _array),
+      (error) => console.error("Error al consultar la tabla Derivados", error)
+    );
+
+    // Consulta para la tabla Enfermedades
+    tx.executeSql(
+      `SELECT * FROM Enfermedades`,
+      [],
+      (_, { rows: { _array } }) =>
+        console.log("Datos de Enfermedades:", _array),
+      (error) =>
+        console.error("Error al consultar la tabla Enfermedades", error)
+    );
+
+    // Consulta para la tabla Planta
+    tx.executeSql(
+      `SELECT * FROM Planta`,
+      [],
+      (_, { rows: { _array } }) => console.log("Datos de Planta:", _array),
+      (error) => console.error("Error al consultar la tabla Planta", error)
+    );
+  });
+};
